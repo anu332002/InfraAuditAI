@@ -2,47 +2,113 @@ import json
 import os
 from subprocess import run
 
-# Function to call a local AI model (like llama3 or mistral) using the `ollama` CLI tool.
-# The function sends a prompt to the model and retrieves the response.
-def call_ollama(prompt):
-    """Call local ollama model like llama3 or mistral."""
-    # Run the `ollama` command with the specified model and prompt.
-    # `capture_output=True` captures the output, and `text=True` ensures the output is in text format.
-    result = run(["ollama", "run", "llama3", prompt], capture_output=True, text=True)
-    # Return the model's response after stripping any extra whitespace.
-    return result.stdout.strip()
+# File paths
+TRIVY_REPORT = 'artifacts\\trivy_report.json'
+CHECKOV_REPORT = 'artifacts\\checkov_report.json'
+AI_LOG = 'logs\\ai_explanation.log'
 
-# Function to load security findings from a JSON file.
-# This function reads the file and parses its content into a Python dictionary.
-def load_findings(file_path):
-    # Open the specified file in read mode.
-    with open(file_path, "r") as f:
-        # Parse the JSON content of the file and return it as a Python dictionary.
+
+def load_json_report(path):
+    """Load JSON content from file."""
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"Report not found: {path}")
+    
+    with open(path, 'r', encoding='utf-8') as f:
         return json.load(f)
 
-# Function to summarize and explain security findings using the AI model.
-# It prepares a prompt with the findings and sends it to the AI model for explanation.
-def summarize_findings(findings):
-    # Create a prompt to explain the findings in plain English.
-    explanation_prompt = "Summarize and explain these security findings in plain English:\n"
-    # Add the first three findings (for brevity) to the prompt in a readable JSON format.
-    explanation_prompt += json.dumps(findings[:3], indent=2)  # limit for brevity
-    # Call the AI model with the prepared prompt and return the explanation.
-    return call_ollama(explanation_prompt)
 
-# Main block of the script. This is executed when the script is run directly.
+def run_ollama(prompt):
+    """Run prompt through Ollama (Llama3)."""
+    result = run(["ollama", "run", "llama3", prompt], capture_output=True, text=True)
+    if result.returncode != 0:
+        raise RuntimeError(f"Ollama execution failed:\n{result.stderr}")
+    return result.stdout.strip()
+
+
+def summarize_trivy_findings(results):
+    """Summarize vulnerabilities from Trivy JSON."""
+    if not results:
+        return "No Trivy findings to summarize."
+
+    prompt_sections = []
+    for result in results:
+        target = result.get("Target", "Unknown Target")
+        vulnerabilities = result.get("Vulnerabilities", [])
+        if not vulnerabilities:
+            continue
+
+        prompt_sections.append(f"\nTarget: {target}")
+        for vuln in vulnerabilities[:5]:  # limit to 5 per target
+            prompt_sections.append(
+                f"- {vuln.get('VulnerabilityID', 'N/A')} "
+                f"({vuln.get('Severity', 'Unknown')}): "
+                f"{vuln.get('Title', '')}"
+            )
+
+    if not prompt_sections:
+        return "No vulnerabilities found in Trivy results."
+
+    full_prompt = (
+        "You are a DevSecOps expert. Review the following Docker image vulnerabilities "
+        "found by Trivy. Explain each issue briefly and suggest mitigations:\n" +
+        "\n".join(prompt_sections)
+    )
+
+    return run_ollama(full_prompt)
+
+
+def summarize_checkov_findings(results):
+    """Summarize failed checks from Checkov JSON."""
+    failed = [r for r in results if r.get("check_result", {}).get("result") == "FAILED"]
+    if not failed:
+        return "No Checkov findings to summarize."
+
+    prompt_sections = []
+    for item in failed[:10]:  # limit to 10 failed checks
+        resource = item.get("resource", "Unknown Resource")
+        check_id = item.get("check_id", "N/A")
+        check_name = item.get("check_name", "")
+        file_path = item.get("file_path", "")
+        prompt_sections.append(
+            f"- {check_id} in {resource} ({file_path}): {check_name}"
+        )
+
+    full_prompt = (
+        "You are a security analyst. Review the following infrastructure as code (IaC) "
+        "misconfigurations found by Checkov. Explain the risks and provide remediations:\n" +
+        "\n".join(prompt_sections)
+    )
+
+    return run_ollama(full_prompt)
+
+
+def main():
+    try:
+        print("=== AI Explanation of Findings ===")
+
+        # Trivy
+        trivy_data = load_json_report(TRIVY_REPORT)
+        trivy_summary = summarize_trivy_findings(trivy_data.get("Results", []))
+
+        # Checkov
+        checkov_data = load_json_report(CHECKOV_REPORT)
+        checkov_summary = summarize_checkov_findings(checkov_data.get("results", {}).get("failed_checks", []))
+
+        # Save results
+        os.makedirs(os.path.dirname(AI_LOG), exist_ok=True)
+        with open(AI_LOG, 'w', encoding='utf-8') as f:
+            f.write("=== Trivy Scan Summary ===\n")
+            f.write(trivy_summary + "\n\n")
+            f.write("=== Checkov Scan Summary ===\n")
+            f.write(checkov_summary + "\n")
+
+        print(trivy_summary)
+        print("\n" + checkov_summary)
+        print(f"\n[✓] AI explanation saved to {AI_LOG}")
+
+    except Exception as e:
+        print(f"[ERROR] {e}")
+
+
 if __name__ == "__main__":
-    # Define the path to the Checkov scan report file.
-    file = 'artifacts\\checkov_report.json'
-    
-    # Check if the scan report file exists.
-    if os.path.exists(file):
-        # Load the findings from the report file.
-        findings = load_findings(file)
-        # Extract the failed checks from the findings and summarize them using the AI model.
-        summary = summarize_findings(findings.get("results", {}).get("failed_checks", []))
-        # Print the AI-generated explanation of the findings.
-        print("\nAI Explanation of Findings:\n", summary)
-    else:
-        # Print a warning message if the scan report file is not found.
-        print("Scan report not found.")
+    main()

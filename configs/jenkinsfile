@@ -4,7 +4,7 @@ pipeline {
     environment {
         VENV_DIR = '.venv'
         CHECKOV_REPORT = 'artifacts\\checkov_report.json'
-        TRIVY_REPORT = 'artifacts\\trivy_report.txt'
+        TRIVY_REPORT = 'artifacts\\trivy_report.json'
         AI_LOG = 'logs\\ai_explanation.log'
         TRIVY_EXE = 'trivy.exe'
     }
@@ -71,7 +71,7 @@ pipeline {
                         mkdir artifacts
                     )
                     call %VENV_DIR%\\Scripts\\activate
-                    checkov -d . -o json > %CHECKOV_REPORT% || exit 0
+                    checkov -d . --output json > %CHECKOV_REPORT% || exit 0
                     icacls %CHECKOV_REPORT% /grant "Everyone:(OI)(CI)F"
                     echo "Contents of artifacts directory after Checkov scan:"
                     dir artifacts
@@ -95,7 +95,7 @@ pipeline {
                     if not exist artifacts (
                         mkdir artifacts
                     )
-                    %TRIVY_EXE% image infraauditai:latest > %TRIVY_REPORT% || exit 0
+                    %TRIVY_EXE% image --format json -o %TRIVY_REPORT% infraauditai:latest || exit 0
                     icacls %TRIVY_REPORT% /grant "Everyone:(OI)(CI)F"
                 '''
             }
@@ -121,6 +121,7 @@ pipeline {
             steps {
                 echo 'Archiving reports...'
                 archiveArtifacts artifacts: 'artifacts\\*.json', allowEmptyArchive: true
+                archiveArtifacts artifacts: 'artifacts\\*.txt', allowEmptyArchive: true
                 archiveArtifacts artifacts: 'logs\\ai_explanation.log', allowEmptyArchive: true
             }
         }
