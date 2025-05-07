@@ -95,7 +95,8 @@ pipeline {
                     if not exist artifacts (
                         mkdir artifacts
                     )
-                    %TRIVY_EXE% image --format json -o %TRIVY_REPORT% infraauditai:latest || exit 0
+                    %TRIVY_EXE% image --format json infraauditai:latest > %TRIVY_REPORT%
+
                     icacls %TRIVY_REPORT% /grant "Everyone:(OI)(CI)F"
                 '''
             }
