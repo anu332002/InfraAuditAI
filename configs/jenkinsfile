@@ -4,9 +4,8 @@ pipeline {
     environment {
         VENV_DIR = '.venv'
         CHECKOV_REPORT = 'artifacts\\checkov_report.json'
-        // TRIVY_REPORT = 'artifacts\\trivy_report.json'
+        TRIVY_REPORT = 'artifacts\\trivy_report.json'
         AI_LOG = 'logs\\ai_explanation.log'
-        // TRIVY_EXE = 'trivy.exe'
     }
 
     stages {
@@ -57,6 +56,28 @@ pipeline {
             }
         }
 
+        stage('Install Trivy') {
+            steps {
+                echo 'Installing Trivy from GitHub releases...'
+                bat '''
+                    if not exist trivy (
+                        mkdir trivy
+                        echo "Downloading Trivy"
+                        powershell -Command "Invoke-WebRequest -Uri https://github.com/aquasecurity/trivy/releases/download/v0.62.1/trivy_0.62.1_windows-64bit.zip > trivy\\trivy.zip"
+                        echo "Extracting Trivy..."
+                        powershell -Command "Expand-Archive -Path trivy\\trivy.zip -DestinationPath trivy\\"
+                        echo "Trivy extracted successfully"
+                        dir trivy
+                    ) else (
+                        echo "Trivy directory already exists, skipping download"
+                    )
+                    echo "Setting TRIVY_EXE path..."
+                    set TRIVY_EXE=%CD%\\trivy\\trivy.exe
+                    echo "Trivy executable path: %TRIVY_EXE%"
+                '''
+            }
+        }
+
         stage('Run Checkov Scan') {
             steps {
                 echo 'Running Checkov security scan...'
@@ -82,19 +103,25 @@ pipeline {
             }
         }
 
-        // stage('Run Trivy Scan') {
-        //     steps {
-        //         echo 'Running Trivy vulnerability scan on Docker image...'
-        //         bat '''
-        //             if not exist artifacts (
-        //                 mkdir artifacts
-        //             )
-        //             %TRIVY_EXE% image --format json infraauditai:latest > %TRIVY_REPORT%
-
-        //             icacls %TRIVY_REPORT% /grant "Everyone:(OI)(CI)F"
-        //         '''
-        //     }
-        // }
+        stage('Run Trivy Scan') {
+            steps {
+                echo 'Running Trivy vulnerability scan on Docker image...'
+                bat '''
+                    if not exist artifacts (
+                        mkdir artifacts
+                    )
+                    
+                    echo "Running Trivy scan..."
+                    .\\trivy\\trivy.exe image -f json infraauditai:latest > %TRIVY_REPORT%
+                    
+                    echo "Setting file permissions..."
+                    icacls %TRIVY_REPORT% /grant "Everyone:(OI)(CI)F"
+                    
+                    echo "Contents of artifacts directory after Trivy scan:"
+                    dir artifacts
+                '''
+            }
+        }
 
         stage('Explain Findings with AI') {
             steps {
