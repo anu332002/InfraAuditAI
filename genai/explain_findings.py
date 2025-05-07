@@ -45,6 +45,9 @@ def explain_and_log(findings, tool_name):
     # Ensure logs directory exists
     os.makedirs("logs", exist_ok=True)
 
+    # Use absolute paths instead of relative paths
+    log_path = os.path.join(os.getcwd(), "logs", "ai_explanation.log")
+
     with open("logs/ai_explanation.log", "a") as log_file:
         log_file.write(f"\n=== {tool_name} Findings ===\n")
         log_file.write(explanation + "\n")

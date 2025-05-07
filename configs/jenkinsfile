@@ -31,6 +31,22 @@ pipeline {
             }
         }
 
+        stage('Make Directories with permissions') {
+            steps {
+                echo 'Creating directories with permissions...'
+                bat '''
+                    if not exist artifacts (
+                        mkdir artifacts
+                        icacls artifacts /grant "Everyone:(OI)(CI)F"
+                    )
+                    if not exist logs (
+                        mkdir logs
+                        icacls logs /grant "Everyone:(OI)(CI)F"
+                    )
+                '''
+            }
+        }
+
         stage('Install Checkov and Trivy') {
             steps {
                 echo 'Installing Checkov and Trivy...'
@@ -56,7 +72,7 @@ pipeline {
                     )
                     call %VENV_DIR%\\Scripts\\activate
                     checkov -d . --output json --output-file-path %CHECKOV_REPORT% || exit 0
-                    icacls %CHECKOV_REPORT% /grant "Everyone:F"
+                    icacls %CHECKOV_REPORT% /grant "Everyone:(OI)(CI)F"
                     echo "Contents of artifacts directory after Checkov scan:"
                     dir artifacts
                 '''
@@ -76,10 +92,11 @@ pipeline {
             steps {
                 echo 'Running Trivy vulnerability scan on Docker image...'
                 bat '''
-                    %TRIVY_EXE% image -f json -o %TRIVY_REPORT% infraauditai:latest || exit 0
-                    icacls %TRIVY_REPORT% /grant "Everyone:F"
-                    echo "Contents of artifacts directory after Trivy scan:"
-                    dir artifacts
+                    if not exist artifacts (
+                        mkdir artifacts
+                    )
+                    %TRIVY_EXE% image -f json infraauditai:latest -o %TRIVY_REPORT% || exit 0
+                    icacls %TRIVY_REPORT% /grant "Everyone:(OI)(CI)F"
                 '''
             }
         }
