@@ -39,18 +39,24 @@ def summarize_findings(findings, tool_name):
 def explain_and_log(findings, tool_name):
     """
     Generate AI explanation and write to logs/ai_explanation.log.
+    Falls back to console output if writing fails.
     """
     explanation = summarize_findings(findings, tool_name)
 
-    # Ensure logs directory exists
-    os.makedirs("logs", exist_ok=True)
+    log_dir = "logs"
+    log_path = os.path.join(log_dir, "ai_explanation.log")
 
-    # Use absolute paths instead of relative paths
-    log_path = os.path.join(os.getcwd(), "logs", "ai_explanation.log")
-
-    with open("logs/ai_explanation.log", "a") as log_file:
-        log_file.write(f"\n=== {tool_name} Findings ===\n")
-        log_file.write(explanation + "\n")
+    try:
+        os.makedirs(log_dir, exist_ok=True)
+        with open(log_path, "a") as log_file:
+            log_file.write(f"\n=== {tool_name} Findings ===\n")
+            log_file.write(explanation + "\n")
+    except PermissionError:
+        print(f"[PermissionError] Cannot write to {log_path}. Outputting explanation below:\n")
+        print(f"\n=== {tool_name} Findings ===\n{explanation}\n")
+    except Exception as e:
+        print(f"[Error writing to log file {log_path}]: {e}")
+        print(f"\n=== {tool_name} Findings ===\n{explanation}\n")
 
 if __name__ == "__main__":
     checkov_file = "artifacts/checkov_report.json"
