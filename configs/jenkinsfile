@@ -4,7 +4,7 @@ pipeline {
     environment {
         VENV_DIR = '.venv'
         CHECKOV_REPORT = 'artifacts\\checkov_report.json'
-        REPORT_TRIVY = 'artifacts\\trivy_report.json'
+        REPORT_TRIVY = 'artifacts\\REPORT_TRIVY.json'
         AI_LOG = 'logs\\ai_explanation.log'
     }
 
@@ -115,7 +115,7 @@ pipeline {
             
             echo Running Trivy scan...
             if exist trivy\\trivy.exe (
-                trivy\\trivy.exe image -f json infraauditai:latest -o %TRIVY_REPORT%
+                trivy\\trivy.exe image -f json infraauditai:latest -o %REPORT_TRIVY%
             ) else (
                 echo ERROR: Trivy executable not found!
                 echo Current directory content:
@@ -126,7 +126,7 @@ pipeline {
             )
             
             echo Setting file permissions...
-            icacls %TRIVY_REPORT% /grant "Everyone:(OI)(CI)F"
+            icacls %REPORT_TRIVY% /grant "Everyone:(OI)(CI)F"
             
             echo Contents of artifacts directory after Trivy scan:
             dir artifacts
