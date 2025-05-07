@@ -3,9 +3,9 @@ pipeline {
 
     environment {
         VENV_DIR = '.venv'
-        CHECKOV_REPORT = os.path.join('artifacts', 'checkov_report.json')
+        CHECKOV_REPORT = 'artifacts\\checkov_report.json'
         // TRIVY_REPORT = 'artifacts\\trivy_report.json'
-        AI_LOG = os.path.join('logs', 'checkov_report.json')
+        AI_LOG = 'logs\\ai_explanation.log'
         // TRIVY_EXE = 'trivy.exe'
     }
 
