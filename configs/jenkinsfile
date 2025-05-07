@@ -21,7 +21,7 @@ pipeline {
                 echo 'Creating virtual environment and installing requirements...'
                 bat '''
                     python -m venv %VENV_DIR%
-                    call %VENV_DIR%\\bin\\activate
+                    call %VENV_DIR%\\Scripts\\activate
                     pip install --upgrade pip
                     pip install -r requirements.txt
                 '''
@@ -32,7 +32,7 @@ pipeline {
             steps {
                 echo 'Installing Checkov and Trivy...'
                 bat '''
-                    call %VENV_DIR%\\bin\\activate
+                    call %VENV_DIR%\\Scripts\\activate
                     pip install checkov
 
                     REM Download Trivy executable for Windows
@@ -53,7 +53,7 @@ pipeline {
                 echo 'Running Checkov security scan...'
                 bat '''
                     mkdir artifacts
-                    call %VENV_DIR%\\bin\\activate
+                    call %VENV_DIR%\\Scripts\\activate
                     checkov -d configs/kubernetes/ -o json > %CHECKOV_REPORT%
                 '''
             }
@@ -82,7 +82,7 @@ pipeline {
                 echo 'Generating AI explanation of security findings...'
                 bat '''
                     mkdir logs
-                    call %VENV_DIR%\\bin\\activate
+                    call %VENV_DIR%\\Scripts\\activate
                     python genai\\explain_findings.py > %AI_LOG%
                     echo "=== AI Explanation of Findings ==="
                     type %AI_LOG%
