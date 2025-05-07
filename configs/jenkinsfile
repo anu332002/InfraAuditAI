@@ -1,0 +1,106 @@
+pipeline {
+    agent any
+
+    environment {
+        VENV_DIR = '.venv'
+        CHECKOV_REPORT = 'artifacts/checkov_report.json'
+        TRIVY_REPORT = 'artifacts/trivy_report.json'
+        AI_LOG = 'logs/ai_explanation.log'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                echo 'Checking out source code...'
+                checkout scm
+            }
+        }
+
+        stage('Set Up Virtual Environment') {
+            steps {
+                echo 'Creating virtual environment and installing requirements...'
+                bat '''
+                    python -m venv %VENV_DIR%
+                    call %VENV_DIR%\\Scripts\\activate
+                    pip install --upgrade pip
+                    pip install -r requirements.txt
+                '''
+            }
+        }
+
+        stage('Install Checkov and Trivy') {
+            steps {
+                echo 'Installing Checkov and Trivy...'
+                bat '''
+                    call %VENV_DIR%\\Scripts\\activate
+                    pip install checkov
+                    curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+                '''
+            }
+        }
+
+        stage('Run Checkov Scan') {
+            steps {
+                echo 'Running Checkov security scan...'
+                bat '''
+                    mkdir artifacts
+                    call %VENV_DIR%\\Scripts\\activate
+                    checkov -d configs/kubernetes/ -o json > %CHECKOV_REPORT%
+                '''
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                echo 'Building Docker image for InfraAuditAI...'
+                bat '''
+                    docker build -t infraauditai:latest -f docker\\Dockerfile .
+                '''
+            }
+        }
+
+        stage('Run Trivy Scan') {
+            steps {
+                echo 'Running Trivy vulnerability scan on Docker image...'
+                bat '''
+                    trivy image -f json -o %TRIVY_REPORT% infraauditai:latest || true
+                '''
+            }
+        }
+
+        stage('Explain Findings with AI') {
+            steps {
+                echo 'Generating AI explanation of security findings...'
+                bat '''
+                    mkdir logs
+                    call %VENV_DIR%\\Scripts\\activate
+                    python genai\\explain_findings.py > %AI_LOG%
+                    echo "=== AI Explanation of Findings ==="
+                    type %AI_LOG%
+                    echo "=== End of Explanation ==="
+                '''
+            }
+        }
+
+        stage('Archive Reports') {
+            steps {
+                echo 'Archiving reports...'
+                archiveArtifacts artifacts: 'artifacts\\*.json', allowEmptyArchive: true
+                archiveArtifacts artifacts: 'logs\\ai_explanation.log', allowEmptyArchive: true
+            }
+        }
+    }
+
+    post {
+        always {
+            echo 'Cleaning up workspace...'
+            cleanWs()
+        }
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed. Check logs and reports for details.'
+        }
+    }
+}

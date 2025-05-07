@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: infraauditai-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: infraauditai
+  template:
+    metadata:
+      labels:
+        app: infraauditai
+    spec:
+      containers:
+        - name: infraauditai-container
+          image: infraauditai-app:latest
+          ports:
+            - containerPort: 8080
+          securityContext:
+            runAsUser: 0        # Bad: running as root
+          resources:            # Missing resource limits
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+          env:                  # Hardcoded secret in env var
+            - name: DB_PASSWORD
+              value: "supersecret"
