@@ -54,7 +54,7 @@ pipeline {
                 bat '''
                     mkdir artifacts
                     call %VENV_DIR%\\Scripts\\activate
-                    checkov -d configs/kubernetes/ -o json > %CHECKOV_REPORT%
+                    checkov -d . --output json --output-file-path artifacts\\checkov-report.json
                 '''
             }
         }
@@ -72,7 +72,7 @@ pipeline {
             steps {
                 echo 'Running Trivy vulnerability scan on Docker image...'
                 bat '''
-                    trivy image -f json -o %TRIVY_REPORT% infraauditai:latest || true
+                    trivy image -f json -o artifacts\\trivy-report.json infraauditai:latest || true
                 '''
             }
         }
