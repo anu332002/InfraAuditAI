@@ -1,6 +1,7 @@
 import json
 import os
 from subprocess import run
+import datetime
 
 # Function to call a local AI model (like llama3 or mistral) using the `ollama` CLI tool.
 # The function sends a prompt to the model and retrieves the response.
@@ -34,6 +35,21 @@ def summarize_findings(findings, source_type):
     explanation_prompt += json.dumps(findings, indent=2)
     return call_ollama(explanation_prompt)
 
+# Function to save analysis to a log file
+def save_to_log(content, log_file):
+    """Save the analysis content to a log file with timestamp."""
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    # Create logs directory if it doesn't exist
+    os.makedirs('logs', exist_ok=True)
+    
+    log_path = os.path.join('logs', log_file)
+    with open(log_path, 'a', encoding='utf-8') as f:
+        f.write(f"\n\n=== Analysis completed at {timestamp} ===\n\n")
+        f.write(content)
+    
+    print(f"Analysis saved to {log_path}")
+
 # Main block of the script.
 if __name__ == "__main__":
     # Process Checkov findings
@@ -59,10 +75,15 @@ if __name__ == "__main__":
                 print("\n--- IaC Security Analysis ---")
                 checkov_summary = summarize_findings(all_failed_checks[:3], "infrastructure code")
                 print(checkov_summary)
+                save_to_log(checkov_summary, 'checkov_analysis.log')
             else:
-                print("No infrastructure security issues found.")
+                message = "No infrastructure security issues found."
+                print(message)
+                save_to_log(message, 'checkov_analysis.log')
         except Exception as e:
-            print(f"Error processing Checkov report: {str(e)}")
+            error_message = f"Error processing Checkov report: {str(e)}"
+            print(error_message)
+            save_to_log(error_message, 'checkov_analysis.log')
     
     # Process Trivy findings next
     if os.path.exists(trivy_file):
@@ -88,10 +109,15 @@ if __name__ == "__main__":
                 print("\n--- Container Security Analysis ---")
                 trivy_summary = summarize_findings(vulnerabilities, "container")
                 print(trivy_summary)
+                save_to_log(trivy_summary, 'trivy_analysis.log')
             else:
-                print("No significant container vulnerabilities found.")
+                message = "No significant container vulnerabilities found."
+                print(message)
+                save_to_log(message, 'trivy_analysis.log')
         except Exception as e:
-            print(f"Error processing Trivy report: {str(e)}")
+            error_message = f"Error processing Trivy report: {str(e)}"
+            print(error_message)
+            save_to_log(error_message, 'trivy_analysis.log')
     else:
         print("\nTrivy scan report not found.")
     
