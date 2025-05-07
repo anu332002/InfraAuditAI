@@ -2,88 +2,39 @@ pipeline {
     agent any
 
     environment {
-        VENV_DIR = '.venv'
-        CHECKOV_REPORT = 'artifacts\\checkov_report.json'
-        TRIVY_REPORT = 'artifacts\\trivy_report.json'
-        AI_LOG = 'logs\\ai_explanation.log'
+        IMAGE_NAME = 'infraauditai:latest'
+        CHECKOV_REPORT = 'artifacts/checkov_report.json'
+        TRIVY_REPORT = 'artifacts/trivy_report.json'
+        AI_LOG = 'logs/ai_explanation.log'
         TRIVY_EXE = 'trivy.exe'
     }
 
     stages {
+
         stage('Checkout') {
             steps {
-                echo 'Checking out source code...'
                 checkout scm
             }
         }
 
-        stage('Set Up Virtual Environment') {
+        stage('Build Docker Image') {
             steps {
-                echo 'Creating virtual environment and installing requirements...'
+                echo 'Building Docker image...'
                 bat '''
-                    if not exist %VENV_DIR% (
-                        python -m venv %VENV_DIR%
-                    )
-                    call %VENV_DIR%\\Scripts\\activate
-                    pip install --upgrade pip
-                    pip install -r requirements.txt
-                '''
-            }
-        }
-
-        stage('Make Directories with permissions') {
-            steps {
-                echo 'Creating directories with permissions...'
-                bat '''
-                    if not exist artifacts (
-                        mkdir artifacts
-                        icacls artifacts /grant "Everyone:(OI)(CI)F"
-                    )
-                    if not exist logs (
-                        mkdir logs
-                        icacls logs /grant "Everyone:(OI)(CI)F"
-                    )
-                '''
-            }
-        }
-
-        stage('Install Checkov and Trivy') {
-            steps {
-                echo 'Installing Checkov and Trivy...'
-                bat '''
-                    call %VENV_DIR%\\Scripts\\activate
-                    pip install checkov
-
-                    REM Download Trivy if not already downloaded
-                    if not exist trivy.zip (
-                        powershell -Command "Invoke-WebRequest -Uri https://github.com/aquasecurity/trivy/releases/download/v0.62.1/trivy_0.62.1_windows-64bit.zip -OutFile trivy.zip"
-                        powershell -Command "Expand-Archive -Path trivy.zip -DestinationPath . -Force"
-                    )
+                    docker build -t %IMAGE_NAME% .
                 '''
             }
         }
 
         stage('Run Checkov Scan') {
             steps {
-                echo 'Running Checkov security scan...'
+                echo 'Running Checkov scan...'
                 bat '''
                     if not exist artifacts (
                         mkdir artifacts
                     )
-                    call %VENV_DIR%\\Scripts\\activate
-                    checkov -d . --output json --output-file-path %CHECKOV_REPORT% || exit 0
+                    checkov -d . --output json > %CHECKOV_REPORT%
                     icacls %CHECKOV_REPORT% /grant "Everyone:(OI)(CI)F"
-                    echo "Contents of artifacts directory after Checkov scan:"
-                    dir artifacts
-                '''
-            }
-        }
-
-        stage('Build Docker Image') {
-            steps {
-                echo 'Building Docker image for InfraAuditAI...'
-                bat '''
-                    docker build -t infraauditai:latest -f docker\\Dockerfile .
                 '''
             }
         }
@@ -95,7 +46,7 @@ pipeline {
                     if not exist artifacts (
                         mkdir artifacts
                     )
-                    %TRIVY_EXE% image -f json infraauditai:latest -o %TRIVY_REPORT% || exit 0
+                    %TRIVY_EXE% image -f json --output %TRIVY_REPORT% %IMAGE_NAME% || exit 0
                     icacls %TRIVY_REPORT% /grant "Everyone:(OI)(CI)F"
                 '''
             }
@@ -108,11 +59,8 @@ pipeline {
                     if not exist logs (
                         mkdir logs
                     )
-                    call %VENV_DIR%\\Scripts\\activate
-                    python genai\\explain_findings.py > %AI_LOG%
-                    echo "=== AI Explanation of Findings ==="
-                    type %AI_LOG%
-                    echo "=== End of Explanation ==="
+                    call .venv\\Scripts\\activate
+                    python explain_findings.py --checkov %CHECKOV_REPORT% --trivy %TRIVY_REPORT% --output %AI_LOG%
                 '''
             }
         }
@@ -120,8 +68,8 @@ pipeline {
         stage('Archive Reports') {
             steps {
                 echo 'Archiving reports...'
-                archiveArtifacts artifacts: 'artifacts\\*.json', allowEmptyArchive: true
-                archiveArtifacts artifacts: 'logs\\ai_explanation.log', allowEmptyArchive: true
+                archiveArtifacts artifacts: 'artifacts/*.json', allowEmptyArchive: true
+                archiveArtifacts artifacts: 'logs/*.log', allowEmptyArchive: true
             }
         }
     }
@@ -130,12 +78,6 @@ pipeline {
         always {
             echo 'Cleaning up workspace...'
             cleanWs()
-        }
-        success {
-            echo 'Pipeline completed successfully!'
-        }
-        failure {
-            echo 'Pipeline failed. Check logs and reports for details.'
         }
     }
 }
