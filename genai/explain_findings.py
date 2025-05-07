@@ -12,9 +12,20 @@ def call_ollama(prompt):
 
 # Function to load security findings from a JSON file.
 def load_findings(file_path):
-    """Load findings from a JSON file."""
-    with open(file_path, "r") as f:
-        return json.load(f)
+    """Load findings from a JSON file with encoding error handling."""
+    try:
+        # Try with utf-8 encoding first (most common for JSON)
+        with open(file_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except UnicodeDecodeError:
+        # If utf-8 fails, try with utf-8-sig (handles BOM)
+        try:
+            with open(file_path, "r", encoding="utf-8-sig") as f:
+                return json.load(f)
+        except UnicodeDecodeError:
+            # Fallback to latin-1 which can read any byte value
+            with open(file_path, "r", encoding="latin-1") as f:
+                return json.load(f)
 
 # Function to summarize and explain security findings using the AI model.
 def summarize_findings(findings, source_type):
