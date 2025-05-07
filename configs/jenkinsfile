@@ -21,7 +21,7 @@ pipeline {
                 echo 'Creating virtual environment and installing requirements...'
                 bat '''
                     python -m venv %VENV_DIR%
-                    call %VENV_DIR%\\Scripts\\activate
+                    call %VENV_DIR%\\bin\\activate
                     pip install --upgrade pip
                     pip install -r requirements.txt
                 '''
@@ -32,11 +32,11 @@ pipeline {
             steps {
                 echo 'Installing Checkov and Trivy...'
                 bat '''
-                    call %VENV_DIR%\\Scripts\\activate
+                    call %VENV_DIR%\\bin\\activate
                     pip install checkov
 
                     REM Download Trivy executable for Windows
-                    powershell -Command "Invoke-WebRequest -Uri https://github.com/aquasecurity/trivy/releases/latest/download/trivy_0.51.1_Windows-64bit.zip -OutFile trivy.zip"
+                    powershell -Command "Invoke-WebRequest -Uri https://github.com/aquasecurity/trivy/releases/download/v0.62.1/trivy_0.62.1_windows-64bit.zip -OutFile trivy.zip"
 
                     REM Extract the zip file
                     powershell -Command "Expand-Archive -Path trivy.zip -DestinationPath . -Force"
@@ -53,7 +53,7 @@ pipeline {
                 echo 'Running Checkov security scan...'
                 bat '''
                     mkdir artifacts
-                    call %VENV_DIR%\\Scripts\\activate
+                    call %VENV_DIR%\\bin\\activate
                     checkov -d configs/kubernetes/ -o json > %CHECKOV_REPORT%
                 '''
             }
@@ -82,7 +82,7 @@ pipeline {
                 echo 'Generating AI explanation of security findings...'
                 bat '''
                     mkdir logs
-                    call %VENV_DIR%\\Scripts\\activate
+                    call %VENV_DIR%\\bin\\activate
                     python genai\\explain_findings.py > %AI_LOG%
                     echo "=== AI Explanation of Findings ==="
                     type %AI_LOG%
