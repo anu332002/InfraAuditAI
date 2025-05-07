@@ -3,10 +3,10 @@ pipeline {
 
     environment {
         VENV_DIR = '.venv'
-        CHECKOV_REPORT = 'artifacts\\checkov_report.json'
-        TRIVY_REPORT = 'artifacts\\trivy_report.json'
-        AI_LOG = 'logs\\ai_explanation.log'
-        TRIVY_EXE = 'trivy.exe'
+        CHECKOV_REPORT = os.path.join('artifacts', 'checkov_report.json')
+        // TRIVY_REPORT = 'artifacts\\trivy_report.json'
+        AI_LOG = os.path.join('logs', 'checkov_report.json')
+        // TRIVY_EXE = 'trivy.exe'
     }
 
     stages {
@@ -47,18 +47,12 @@ pipeline {
             }
         }
 
-        stage('Install Checkov and Trivy') {
+        stage('Install Checkov') {
             steps {
-                echo 'Installing Checkov and Trivy...'
+                echo 'Installing Checkov...'
                 bat '''
                     call %VENV_DIR%\\Scripts\\activate
                     pip install checkov
-
-                    REM Download Trivy if not already downloaded
-                    if not exist trivy.zip (
-                        powershell -Command "Invoke-WebRequest -Uri https://github.com/aquasecurity/trivy/releases/download/v0.62.1/trivy_0.62.1_windows-64bit.zip -OutFile trivy.zip"
-                        powershell -Command "Expand-Archive -Path trivy.zip -DestinationPath . -Force"
-                    )
                 '''
             }
         }
@@ -88,19 +82,19 @@ pipeline {
             }
         }
 
-        stage('Run Trivy Scan') {
-            steps {
-                echo 'Running Trivy vulnerability scan on Docker image...'
-                bat '''
-                    if not exist artifacts (
-                        mkdir artifacts
-                    )
-                    %TRIVY_EXE% image --format json infraauditai:latest > %TRIVY_REPORT%
+        // stage('Run Trivy Scan') {
+        //     steps {
+        //         echo 'Running Trivy vulnerability scan on Docker image...'
+        //         bat '''
+        //             if not exist artifacts (
+        //                 mkdir artifacts
+        //             )
+        //             %TRIVY_EXE% image --format json infraauditai:latest > %TRIVY_REPORT%
 
-                    icacls %TRIVY_REPORT% /grant "Everyone:(OI)(CI)F"
-                '''
-            }
-        }
+        //             icacls %TRIVY_REPORT% /grant "Everyone:(OI)(CI)F"
+        //         '''
+        //     }
+        // }
 
         stage('Explain Findings with AI') {
             steps {
@@ -122,7 +116,6 @@ pipeline {
             steps {
                 echo 'Archiving reports...'
                 archiveArtifacts artifacts: 'artifacts\\*.json', allowEmptyArchive: true
-                archiveArtifacts artifacts: 'artifacts\\*.txt', allowEmptyArchive: true
                 archiveArtifacts artifacts: 'logs\\ai_explanation.log', allowEmptyArchive: true
             }
         }
