@@ -4,7 +4,7 @@ pipeline {
     environment {
         VENV_DIR = '.venv'
         CHECKOV_REPORT = 'artifacts\\checkov_report.json'
-        TRIVY_REPORT = 'artifacts\\trivy_report.json'
+        TRIVY_REPORT = 'artifacts\\trivy_report.txt'
         AI_LOG = 'logs\\ai_explanation.log'
         TRIVY_EXE = 'trivy.exe'
     }
