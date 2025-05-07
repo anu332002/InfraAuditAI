@@ -12,33 +12,78 @@ def call_ollama(prompt):
 
 # Function to load security findings from a JSON file.
 def load_findings(file_path):
-    """Load the Checkov findings from a JSON file."""
+    """Load findings from a JSON file."""
     with open(file_path, "r") as f:
         return json.load(f)
 
 # Function to summarize and explain security findings using the AI model.
-def summarize_findings(findings):
+def summarize_findings(findings, source_type):
     """Summarize and explain the security findings."""
-    explanation_prompt = "Summarize and explain these security findings in plain English:\n"
-    explanation_prompt += json.dumps(findings[:3], indent=2)  # Limit for brevity
+    explanation_prompt = f"Summarize and explain these {source_type} security findings in plain English:\n"
+    explanation_prompt += json.dumps(findings, indent=2)
     return call_ollama(explanation_prompt)
 
 # Main block of the script.
 if __name__ == "__main__":
-    file = os.path.join('artifacts', 'checkov_report.json')
+    # Process Checkov findings
+    checkov_file = os.path.join('artifacts', 'checkov_report.json')
+    trivy_file = os.path.join('artifacts', 'REPORT_TRIVY.json')
     
-    if os.path.exists(file):
-        findings = load_findings(file)
-        
-        # NEW: Iterate through the findings list and collect all failed checks
-        all_failed_checks = []
-        for result in findings:
-            if isinstance(result, dict):  # Make sure it's a dictionary before accessing keys
-                failed_checks = result.get("results", {}).get("failed_checks", [])
-                all_failed_checks.extend(failed_checks)
-
-        # Generate the explanation for the failed checks
-        summary = summarize_findings(all_failed_checks)
-        print("\nAI Explanation of Findings:\n", summary)
+    print("\n=== AI Security Analysis ===\n")
+    
+    # Process Checkov findings first
+    if os.path.exists(checkov_file):
+        print("Processing Infrastructure as Code (Checkov) findings...")
+        try:
+            checkov_data = load_findings(checkov_file)
+            
+            # Extract failed checks from Checkov
+            all_failed_checks = []
+            for result in checkov_data:
+                if isinstance(result, dict):
+                    failed_checks = result.get("results", {}).get("failed_checks", [])
+                    all_failed_checks.extend(failed_checks)
+            
+            if all_failed_checks:
+                print("\n--- IaC Security Analysis ---")
+                checkov_summary = summarize_findings(all_failed_checks[:3], "infrastructure code")
+                print(checkov_summary)
+            else:
+                print("No infrastructure security issues found.")
+        except Exception as e:
+            print(f"Error processing Checkov report: {str(e)}")
+    
+    # Process Trivy findings next
+    if os.path.exists(trivy_file):
+        print("\nProcessing Container Security (Trivy) findings...")
+        try:
+            trivy_data = load_findings(trivy_file)
+            
+            # Extract vulnerabilities from Trivy JSON
+            vulnerabilities = []
+            if "Results" in trivy_data:
+                for result in trivy_data["Results"]:
+                    if "Vulnerabilities" in result and result["Vulnerabilities"]:
+                        # Take a subset of vulnerabilities for analysis
+                        critical_high_vulns = [
+                            v for v in result["Vulnerabilities"] 
+                            if v.get("Severity") in ["CRITICAL", "HIGH"]
+                        ][:3]  # Limit to 3 critical/high vulns
+                        
+                        if critical_high_vulns:
+                            vulnerabilities.extend(critical_high_vulns)
+            
+            if vulnerabilities:
+                print("\n--- Container Security Analysis ---")
+                trivy_summary = summarize_findings(vulnerabilities, "container")
+                print(trivy_summary)
+            else:
+                print("No significant container vulnerabilities found.")
+        except Exception as e:
+            print(f"Error processing Trivy report: {str(e)}")
     else:
-        print("Scan report not found.")
+        print("\nTrivy scan report not found.")
+    
+    # If neither report is found
+    if not os.path.exists(checkov_file) and not os.path.exists(trivy_file):
+        print("No security scan reports found.")
