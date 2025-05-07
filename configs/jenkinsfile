@@ -106,33 +106,33 @@ pipeline {
         }
 
         stage('Run Trivy Scan') {
-            steps {
-                echo 'Running Trivy vulnerability scan on Docker image...'
-                bat '''
-                    if not exist artifacts (
-                        mkdir artifacts
-                    )
-                    
-                    echo Running Trivy scan...
-                    if exist trivy\\trivy.exe (
-                        trivy\\trivy.exe image -f json infraauditai:latest > %TRIVY_REPORT%
-                    ) else (
-                        echo ERROR: Trivy executable not found!
-                        echo Current directory content:
-                        dir
-                        echo Trivy directory content:
-                        dir trivy
-                        exit 1
-                    )
-                    
-                    echo Setting file permissions...
-                    icacls %TRIVY_REPORT% /grant "Everyone:(OI)(CI)F"
-                    
-                    echo Contents of artifacts directory after Trivy scan:
-                    dir artifacts
-                '''
-            }
-        }
+    steps {
+        echo 'Running Trivy vulnerability scan on Docker image...'
+        bat '''
+            if not exist artifacts (
+                mkdir artifacts
+            )
+            
+            echo Running Trivy scan...
+            if exist trivy\\trivy.exe (
+                trivy\\trivy.exe image -f json infraauditai:latest -o %TRIVY_REPORT%
+            ) else (
+                echo ERROR: Trivy executable not found!
+                echo Current directory content:
+                dir
+                echo Trivy directory content:
+                dir trivy
+                exit 1
+            )
+            
+            echo Setting file permissions...
+            icacls %TRIVY_REPORT% /grant "Everyone:(OI)(CI)F"
+            
+            echo Contents of artifacts directory after Trivy scan:
+            dir artifacts
+        '''
+    }
+}
 
         stage('Explain Findings with AI') {
             steps {
