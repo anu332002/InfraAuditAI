@@ -62,18 +62,20 @@ pipeline {
                 bat '''
                     if not exist trivy (
                         mkdir trivy
-                        echo "Downloading Trivy"
-                        powershell -Command "Invoke-WebRequest -Uri https://github.com/aquasecurity/trivy/releases/download/v0.62.1/trivy_0.62.1_windows-64bit.zip > trivy\\trivy.zip"
-                        echo "Extracting Trivy..."
-                        powershell -Command "Expand-Archive -Path trivy\\trivy.zip -DestinationPath trivy\\"
-                        echo "Trivy extracted successfully"
+                        echo Downloading Trivy
+                        powershell -Command "Invoke-WebRequest -Uri 'https://github.com/aquasecurity/trivy/releases/download/v0.62.1/trivy_0.62.1_windows-64bit.zip' -OutFile 'trivy\\trivy.zip'"
+                        echo Extracting Trivy
+                        powershell -Command "Expand-Archive -Path 'trivy\\trivy.zip' -DestinationPath 'trivy'"
+                        echo Trivy extracted successfully
                         dir trivy
                     ) else (
-                        echo "Trivy directory already exists, skipping download"
+                        echo Trivy directory already exists, checking executable
+                        if not exist trivy\\trivy.exe (
+                            echo Trivy executable missing, downloading again
+                            powershell -Command "Invoke-WebRequest -Uri 'https://github.com/aquasecurity/trivy/releases/download/v0.62.1/trivy_0.62.1_windows-64bit.zip' -OutFile 'trivy\\trivy.zip'"
+                            powershell -Command "Expand-Archive -Path 'trivy\\trivy.zip' -DestinationPath 'trivy' -Force"
+                        )
                     )
-                    echo "Setting TRIVY_EXE path..."
-                    set TRIVY_EXE=%CD%\\trivy\\trivy.exe
-                    echo "Trivy executable path: %TRIVY_EXE%"
                 '''
             }
         }
@@ -111,13 +113,22 @@ pipeline {
                         mkdir artifacts
                     )
                     
-                    echo "Running Trivy scan..."
-                    .\\trivy\\trivy.exe image -f json infraauditai:latest > %TRIVY_REPORT%
+                    echo Running Trivy scan...
+                    if exist trivy\\trivy.exe (
+                        trivy\\trivy.exe image -f json infraauditai:latest > %TRIVY_REPORT%
+                    ) else (
+                        echo ERROR: Trivy executable not found!
+                        echo Current directory content:
+                        dir
+                        echo Trivy directory content:
+                        dir trivy
+                        exit 1
+                    )
                     
-                    echo "Setting file permissions..."
+                    echo Setting file permissions...
                     icacls %TRIVY_REPORT% /grant "Everyone:(OI)(CI)F"
                     
-                    echo "Contents of artifacts directory after Trivy scan:"
+                    echo Contents of artifacts directory after Trivy scan:
                     dir artifacts
                 '''
             }
