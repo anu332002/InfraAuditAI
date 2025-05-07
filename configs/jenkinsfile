@@ -34,10 +34,19 @@ pipeline {
                 bat '''
                     call %VENV_DIR%\\Scripts\\activate
                     pip install checkov
-                    curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+
+                    REM Download Trivy executable for Windows
+                    powershell -Command "Invoke-WebRequest -Uri https://github.com/aquasecurity/trivy/releases/latest/download/trivy_0.51.1_Windows-64bit.zip -OutFile trivy.zip"
+
+                    REM Extract the zip file
+                    powershell -Command "Expand-Archive -Path trivy.zip -DestinationPath . -Force"
+
+                    REM Move Trivy.exe to a directory in PATH or keep it here and use relative path
+                    setx PATH "%CD%;%PATH%"
                 '''
             }
         }
+
 
         stage('Run Checkov Scan') {
             steps {
