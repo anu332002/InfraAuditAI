@@ -147,6 +147,19 @@ pipeline {
             }
         }
 
+        stage('Start Monitoring Stack with Docker Compose') {
+            steps {
+                echo 'Starting monitoring stack (FastAPI, Prometheus, Grafana)...'
+                bat '''
+                    cd docker
+                    docker-compose down || exit 0
+                    docker-compose up --build -d
+                    cd ..
+                '''
+            }
+        }
+
+
         stage('Archive Reports') {
             steps {
                 echo 'Archiving reports...'

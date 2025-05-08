@@ -1,65 +1,51 @@
-from fastapi import FastAPI, Response
+from fastapi import FastAPI
+from fastapi.responses import PlainTextResponse
+from prometheus_client import Gauge, generate_latest, CONTENT_TYPE_LATEST
 import os
-import re
 
 app = FastAPI()
 
-LOG_FILE = "logs/ai_explanation.log"
+# Prometheus metrics
+checkov_findings = Gauge("checkov_findings_total", "Total Checkov AI-explained security findings")
+trivy_critical = Gauge("trivy_vulnerabilities_critical", "Critical vulnerabilities found by Trivy")
+trivy_high = Gauge("trivy_vulnerabilities_high", "High vulnerabilities found by Trivy")
 
+def parse_checkov_log(file_path):
+    """
+    Count 'FAILED' findings in Checkov analysis log.
+    """
+    if not os.path.exists(file_path):
+        return 0
 
-def parse_ai_log():
-    if not os.path.exists(LOG_FILE):
-        return {
-            "checkov_summary_exists": 0,
-            "trivy_summary_exists": 0,
-            "summary_line_count": 0,
-            "checkov_issue_count": 0,
-            "trivy_issue_count": 0
-        }
-
-    with open(LOG_FILE, "r", encoding="utf-8") as f:
+    with open(file_path, 'r') as f:
         content = f.read()
+        return content.count("**Result:** FAILED")
 
-    lines = content.strip().splitlines()
-    checkov_summary_exists = "=== Checkov Findings ===" in content
-    trivy_summary_exists = "=== Trivy Findings ===" in content
+def parse_trivy_log(file_path):
+    """
+    Count 'CRITICAL' and 'HIGH' findings in Trivy analysis log.
+    """
+    if not os.path.exists(file_path):
+        return (0, 0)
 
-    # Naive issue count estimation
-    checkov_issues = len(re.findall(r"Checkov Finding \d+:", content, re.IGNORECASE))
-    trivy_issues = len(re.findall(r"Trivy Finding \d+:", content, re.IGNORECASE))
+    critical_count = 0
+    high_count = 0
+    with open(file_path, 'r') as f:
+        for line in f:
+            if "Severity: CRITICAL" in line:
+                critical_count += 1
+            elif "Severity: HIGH" in line:
+                high_count += 1
+    return critical_count, high_count
 
-    return {
-        "checkov_summary_exists": int(checkov_summary_exists),
-        "trivy_summary_exists": int(trivy_summary_exists),
-        "summary_line_count": len(lines),
-        "checkov_issue_count": checkov_issues,
-        "trivy_issue_count": trivy_issues
-    }
-
-
-@app.get("/metrics")
+@app.get("/metrics", response_class=PlainTextResponse)
 def metrics():
-    data = parse_ai_log()
-    prometheus_format = f"""
-# HELP auditai_checkov_summary_success Whether Checkov summary was generated
-# TYPE auditai_checkov_summary_success gauge
-auditai_checkov_summary_success {data["checkov_summary_exists"]}
+    # Parse logs and update metrics
+    checkov_total = parse_checkov_log("/app/logs/checkov_analysis.log")
+    crit, high = parse_trivy_log("/app/logs/trivy_analysis.log")
 
-# HELP auditai_trivy_summary_success Whether Trivy summary was generated
-# TYPE auditai_trivy_summary_success gauge
-auditai_trivy_summary_success {data["trivy_summary_exists"]}
+    checkov_findings.set(checkov_total)
+    trivy_critical.set(crit)
+    trivy_high.set(high)
 
-# HELP auditai_summary_lines_total Number of lines in AI summary log
-# TYPE auditai_summary_lines_total gauge
-auditai_summary_lines_total {data["summary_line_count"]}
-
-# HELP auditai_checkov_issue_count Number of Checkov issues summarized
-# TYPE auditai_checkov_issue_count gauge
-auditai_checkov_issue_count {data["checkov_issue_count"]}
-
-# HELP auditai_trivy_issue_count Number of Trivy issues summarized
-# TYPE auditai_trivy_issue_count gauge
-auditai_trivy_issue_count {data["trivy_issue_count"]}
-""".strip()
-
-    return Response(content=prometheus_format, media_type="text/plain")
+    return PlainTextResponse(generate_latest(), media_type=CONTENT_TYPE_LATEST)

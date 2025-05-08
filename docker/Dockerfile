@@ -11,16 +11,12 @@ WORKDIR /app
 COPY requirements.txt .
 
 # Install the Python dependencies listed in `requirements.txt` using pip.
-RUN pip install -r requirements.txt
+RUN pip install -r requirements.txt && pip install prometheus_client
 
 # Copy the `src` folder from the host machine to the container.
 # This folder contains the application source code.
-COPY src/ ./src/
+COPY . .
+# Set environment variables
+ENV PYTHONPATH=/app
 
-# Copy the `tests` folder from the host machine to the container.
-# This folder contains the test scripts for the application.
-COPY src/tests/ .src/tests/
-
-# Define the command to run the application when the container starts.
-# Here, it runs the `main.py` script located in the `src/app` directory.
-CMD ["python3", "src/app/main.py"]
+CMD ["uvicorn", "src.app.metrics_exporter:app", "--host", "0.0.0.0", "--port", "8000"]
