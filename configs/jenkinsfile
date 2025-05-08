@@ -4,10 +4,8 @@ pipeline {
     environment {
         VENV_DIR = '.venv'
         CHECKOV_REPORT = 'artifacts\\checkov_report.json'
-        REPORT_TRIVY = 'artifacts\\trivy_report.json'
+        REPORT_TRIVY = 'artifacts\\REPORT_TRIVY.json'
         AI_LOG = 'logs\\ai_explanation.log'
-        CHECKOV_LOG = 'logs\\checkov_analysis.log'
-        LOG_TRIVY = 'logs\\trivy_analysis.log'
     }
 
     stages {
@@ -144,8 +142,10 @@ pipeline {
                         mkdir logs
                     )
                     call %VENV_DIR%\\Scripts\\activate
-                    python genai\\explain_findings.py
+                    python genai\\explain_findings.py > %AI_LOG%
                     echo "=== AI Explanation of Findings ==="
+                    type %AI_LOG%
+                    echo "=== End of Explanation ==="
                 '''
             }
         }
@@ -154,7 +154,7 @@ pipeline {
             steps {
                 echo 'Archiving reports...'
                 archiveArtifacts artifacts: 'artifacts\\*.json', allowEmptyArchive: true
-                archiveArtifacts artifacts: 'logs\\*.log', allowEmptyArchive: true
+                archiveArtifacts artifacts: 'logs\\ai_explanation.log', allowEmptyArchive: true
             }
         }
     }
