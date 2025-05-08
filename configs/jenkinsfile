@@ -172,6 +172,9 @@ pipeline {
             steps {
                 echo 'Creating KIND cluster and deploying to Kubernetes...'
                 bat '''
+                    kubectl config use-context kind-infraaudit
+                    docker build -t infraauditai:latest -f docker\\Dockerfile .
+                    kind load docker-image infraauditai:latest --name infraaudit
                     kubectl apply -f configs\\kubernetes\\deployment.yaml
                     kubectl apply -f configs\\kubernetes\\service.yaml
                     kubectl get pods -o wide
