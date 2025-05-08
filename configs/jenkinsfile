@@ -18,7 +18,7 @@ pipeline {
 
     stages {
         stage('Checkout') {
-            when { anyOf { expression { params.RUN_STAGE == 'ALL' }, expression { params.RUN_STAGE == 'Checkout' } } }
+            when {  expression { params.RUN_STAGE == 'ALL' || params.RUN_STAGE == 'Checkout' } } 
             steps {
                 echo 'Checking out source code...'
                 checkout scm
@@ -26,7 +26,7 @@ pipeline {
         }
 
         stage('Set Up Virtual Environment') {
-            when { anyOf { expression { params.RUN_STAGE == 'ALL' }, expression { params.RUN_STAGE == 'SetupVenv' } } }
+            when {  expression { params.RUN_STAGE == 'ALL' || params.RUN_STAGE == 'SetupVenv' } } 
             steps {
                 echo 'Creating virtual environment and installing requirements...'
                 bat '''
@@ -41,7 +41,7 @@ pipeline {
         }
 
         stage('Make Directories with permissions') {
-            when { anyOf { expression { params.RUN_STAGE == 'ALL' }, expression { params.RUN_STAGE == 'MakeDirs' } } }
+            when {  expression { params.RUN_STAGE == 'ALL' || params.RUN_STAGE == 'MakeDirs' } } 
             steps {
                 echo 'Creating directories with permissions...'
                 bat '''
@@ -58,7 +58,7 @@ pipeline {
         }
 
         stage('Install Checkov') {
-            when { anyOf { expression { params.RUN_STAGE == 'ALL' }, expression { params.RUN_STAGE == 'InstallCheckov' } } }
+            when {  expression { params.RUN_STAGE == 'ALL' || params.RUN_STAGE == 'InstallCheckov' } } 
             steps {
                 echo 'Installing Checkov...'
                 bat '''
@@ -69,7 +69,7 @@ pipeline {
         }
 
         stage('Install Trivy') {
-            when { anyOf { expression { params.RUN_STAGE == 'ALL' }, expression { params.RUN_STAGE == 'InstallTrivy' } } }
+            when {  expression { params.RUN_STAGE == 'ALL' || params.RUN_STAGE == 'InstallTrivy' } } 
             steps {
                 echo 'Installing Trivy from GitHub releases...'
                 bat '''
@@ -94,7 +94,7 @@ pipeline {
         }
 
         stage('Run Checkov Scan') {
-            when { anyOf { expression { params.RUN_STAGE == 'ALL' }, expression { params.RUN_STAGE == 'ScanCheckov' } } }
+            when {  expression { params.RUN_STAGE == 'ALL' || params.RUN_STAGE == 'ScanCheckov' } } 
             steps {
                 echo 'Running Checkov security scan...'
                 bat '''
@@ -111,7 +111,7 @@ pipeline {
         }
 
         stage('Build Docker Image') {
-            when { anyOf { expression { params.RUN_STAGE == 'ALL' }, expression { params.RUN_STAGE == 'BuildDocker' } } }
+            when {  expression { params.RUN_STAGE == 'ALL' || params.RUN_STAGE == 'BuildDocker' } } 
             steps {
                 echo 'Building Docker image for InfraAuditAI...'
                 bat '''
@@ -121,7 +121,7 @@ pipeline {
         }
 
         stage('Run Trivy Scan') {
-            when { anyOf { expression { params.RUN_STAGE == 'ALL' }, expression { params.RUN_STAGE == 'ScanTrivy' } } }
+            when {  expression { params.RUN_STAGE == 'ALL' || params.RUN_STAGE == 'ScanTrivy' } } 
             steps {
                 echo 'Running Trivy vulnerability scan on Docker image...'
                 bat '''
@@ -151,7 +151,7 @@ pipeline {
         }
 
         stage('Explain Findings with AI') {
-            when { anyOf { expression { params.RUN_STAGE == 'ALL' }, expression { params.RUN_STAGE == 'ExplainAI' } } }
+            when {  expression { params.RUN_STAGE == 'ALL' || params.RUN_STAGE == 'ExplainAI' } } 
             steps {
                 echo 'Generating AI explanation of security findings...'
                 bat '''
@@ -165,7 +165,7 @@ pipeline {
         }
 
         stage('Start Monitoring Stack with Docker Compose') {
-            when { anyOf { expression { params.RUN_STAGE == 'ALL' }, expression { params.RUN_STAGE == 'MonitoringStack' } } }
+            when {  expression { params.RUN_STAGE == 'ALL' || params.RUN_STAGE == 'MonitoringStack' } } 
             steps {
                 echo 'Starting monitoring stack (FastAPI, Prometheus, Grafana)...'
                 bat '''
@@ -179,7 +179,7 @@ pipeline {
 
 
         stage('Archive Reports') {
-            when { anyOf { expression { params.RUN_STAGE == 'ALL' }, expression { params.RUN_STAGE == 'ArchiveReports' } } }
+            when {  expression { params.RUN_STAGE == 'ALL' || params.RUN_STAGE == 'ArchiveReports' } } 
             steps {
                 echo 'Archiving reports...'
                 archiveArtifacts artifacts: 'artifacts\\*.json', allowEmptyArchive: true
@@ -188,7 +188,7 @@ pipeline {
         }
 
         stage('Deploy to Kubernetes with KIND') {
-            when { anyOf { expression { params.RUN_STAGE == 'ALL' }, expression { params.RUN_STAGE == 'DeployK8s' } } }
+            when {  expression { params.RUN_STAGE == 'ALL' || params.RUN_STAGE == 'DeployK8s' } } 
             steps {
                 echo 'Creating KIND cluster and deploying to Kubernetes...'
                 bat '''
