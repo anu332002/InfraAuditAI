@@ -172,18 +172,8 @@ pipeline {
             steps {
                 echo 'Creating KIND cluster and deploying to Kubernetes...'
                 bat '''
-                    REM Use full path if needed for kind.exe
-                    kind create cluster --name infraaudit-cluster
-
-                    REM Set context to KIND cluster
-                    kubectl config use-context kind-infraaudit-cluster
-
-                    kubectl get nodes
-                    kubectl cluster-info
-
                     kubectl apply -f configs\\kubernetes\\deployment.yaml
                     kubectl apply -f configs\\kubernetes\\service.yaml
-
                     kubectl get pods -o wide
                     kubectl get svc
                 '''
