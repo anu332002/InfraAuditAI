@@ -198,7 +198,7 @@ pipeline {
                     kubectl apply -f configs\\kubernetes\\deployment.yaml
                     kubectl apply -f configs\\kubernetes\\service.yaml
                     kubectl get svc
-                    timeout /t 5 /nobreak > NUL
+                    ping -n 6 127.0.0.1 > nul
                     kubectl get pods -o wide
                 '''
             }
