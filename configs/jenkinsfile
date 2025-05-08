@@ -8,8 +8,17 @@ pipeline {
         AI_LOG = 'logs\\ai_explanation.log'
     }
 
+    parameters {
+        choice(
+            name: 'RUN_STAGE',
+            choices: ['ALL', 'Checkout', 'SetupVenv', 'MakeDirs', 'InstallCheckov', 'InstallTrivy', 'ScanCheckov', 'BuildDocker', 'ScanTrivy', 'ExplainAI', 'MonitoringStack', 'ArchiveReports', 'DeployK8s'],
+            description: 'Select a specific stage to run or ALL to run the full pipeline'
+        )
+    }
+
     stages {
         stage('Checkout') {
+            when { anyOf { expression { params.RUN_STAGE == 'ALL' }, expression { params.RUN_STAGE == 'Checkout' } } }
             steps {
                 echo 'Checking out source code...'
                 checkout scm
@@ -17,6 +26,7 @@ pipeline {
         }
 
         stage('Set Up Virtual Environment') {
+            when { anyOf { expression { params.RUN_STAGE == 'ALL' }, expression { params.RUN_STAGE == 'SetupVenv' } } }
             steps {
                 echo 'Creating virtual environment and installing requirements...'
                 bat '''
@@ -31,6 +41,7 @@ pipeline {
         }
 
         stage('Make Directories with permissions') {
+            when { anyOf { expression { params.RUN_STAGE == 'ALL' }, expression { params.RUN_STAGE == 'MakeDirs' } } }
             steps {
                 echo 'Creating directories with permissions...'
                 bat '''
@@ -47,6 +58,7 @@ pipeline {
         }
 
         stage('Install Checkov') {
+            when { anyOf { expression { params.RUN_STAGE == 'ALL' }, expression { params.RUN_STAGE == 'InstallCheckov' } } }
             steps {
                 echo 'Installing Checkov...'
                 bat '''
@@ -57,6 +69,7 @@ pipeline {
         }
 
         stage('Install Trivy') {
+            when { anyOf { expression { params.RUN_STAGE == 'ALL' }, expression { params.RUN_STAGE == 'InstallTrivy' } } }
             steps {
                 echo 'Installing Trivy from GitHub releases...'
                 bat '''
@@ -81,6 +94,7 @@ pipeline {
         }
 
         stage('Run Checkov Scan') {
+            when { anyOf { expression { params.RUN_STAGE == 'ALL' }, expression { params.RUN_STAGE == 'ScanCheckov' } } }
             steps {
                 echo 'Running Checkov security scan...'
                 bat '''
@@ -97,6 +111,7 @@ pipeline {
         }
 
         stage('Build Docker Image') {
+            when { anyOf { expression { params.RUN_STAGE == 'ALL' }, expression { params.RUN_STAGE == 'BuildDocker' } } }
             steps {
                 echo 'Building Docker image for InfraAuditAI...'
                 bat '''
@@ -106,35 +121,37 @@ pipeline {
         }
 
         stage('Run Trivy Scan') {
-    steps {
-        echo 'Running Trivy vulnerability scan on Docker image...'
-        bat '''
-            if not exist artifacts (
-                mkdir artifacts
-            )
-            
-            echo Running Trivy scan...
-            if exist trivy\\trivy.exe (
-                trivy\\trivy.exe image -f json infraauditai:latest -o %REPORT_TRIVY%
-            ) else (
-                echo ERROR: Trivy executable not found!
-                echo Current directory content:
-                dir
-                echo Trivy directory content:
-                dir trivy
-                exit 1
-            )
-            
-            echo Setting file permissions...
-            icacls %REPORT_TRIVY% /grant "Everyone:(OI)(CI)F"
-            
-            echo Contents of artifacts directory after Trivy scan:
-            dir artifacts
-        '''
-    }
-}
+            when { anyOf { expression { params.RUN_STAGE == 'ALL' }, expression { params.RUN_STAGE == 'ScanTrivy' } } }
+            steps {
+                echo 'Running Trivy vulnerability scan on Docker image...'
+                bat '''
+                    if not exist artifacts (
+                        mkdir artifacts
+                    )
+                    
+                    echo Running Trivy scan...
+                    if exist trivy\\trivy.exe (
+                        trivy\\trivy.exe image -f json infraauditai:latest -o %REPORT_TRIVY%
+                    ) else (
+                        echo ERROR: Trivy executable not found!
+                        echo Current directory content:
+                        dir
+                        echo Trivy directory content:
+                        dir trivy
+                        exit 1
+                    )
+                    
+                    echo Setting file permissions...
+                    icacls %REPORT_TRIVY% /grant "Everyone:(OI)(CI)F"
+                    
+                    echo Contents of artifacts directory after Trivy scan:
+                    dir artifacts
+                '''
+            }
+        }
 
         stage('Explain Findings with AI') {
+            when { anyOf { expression { params.RUN_STAGE == 'ALL' }, expression { params.RUN_STAGE == 'ExplainAI' } } }
             steps {
                 echo 'Generating AI explanation of security findings...'
                 bat '''
@@ -148,6 +165,7 @@ pipeline {
         }
 
         stage('Start Monitoring Stack with Docker Compose') {
+            when { anyOf { expression { params.RUN_STAGE == 'ALL' }, expression { params.RUN_STAGE == 'MonitoringStack' } } }
             steps {
                 echo 'Starting monitoring stack (FastAPI, Prometheus, Grafana)...'
                 bat '''
@@ -161,6 +179,7 @@ pipeline {
 
 
         stage('Archive Reports') {
+            when { anyOf { expression { params.RUN_STAGE == 'ALL' }, expression { params.RUN_STAGE == 'ArchiveReports' } } }
             steps {
                 echo 'Archiving reports...'
                 archiveArtifacts artifacts: 'artifacts\\*.json', allowEmptyArchive: true
@@ -169,6 +188,7 @@ pipeline {
         }
 
         stage('Deploy to Kubernetes with KIND') {
+            when { anyOf { expression { params.RUN_STAGE == 'ALL' }, expression { params.RUN_STAGE == 'DeployK8s' } } }
             steps {
                 echo 'Creating KIND cluster and deploying to Kubernetes...'
                 bat '''
