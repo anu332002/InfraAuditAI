@@ -32,16 +32,6 @@ Grafana is used for visualizing the metrics collected by Prometheus. Dashboards 
 
 The ELK stack (Elasticsearch, Logstash, Kibana) is used for centralized logging. It allows for the aggregation, storage, and visualization of logs from various sources.
 
-#### Logging Strategy
-
-- **Log Aggregation:** All application logs should be sent to Logstash for processing.
-- **Structured Logging:** Use structured logging formats (e.g., JSON) to facilitate easier querying and analysis.
-- **Log Retention:** Define a log retention policy to manage storage and compliance.
-
-### Log Analysis
-
-Kibana provides a user-friendly interface for searching and visualizing logs. It can be used to create dashboards for monitoring log data and identifying trends or anomalies.
-
 ## Alerts and Notifications
 
 Set up alerts based on the metrics collected by Prometheus. Notifications can be sent via email, Slack, or other communication channels to inform the team of critical issues.

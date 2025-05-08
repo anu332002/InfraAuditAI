@@ -2,6 +2,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: infraauditai-deployment
+  labels:
+    app: infraauditai
 spec:
   replicas: 1
   selector:
@@ -13,16 +15,15 @@ spec:
         app: infraauditai
     spec:
       containers:
-        - name: infraauditai-container
-          image: infraauditai-app:latest
-          ports:
-            - containerPort: 8080
-          securityContext:
-            runAsUser: 0        # Bad: running as root
-          resources:            # Missing resource limits
-            requests:
-              cpu: "50m"
-              memory: "64Mi"
-          env:                  # Hardcoded secret in env var
-            - name: DB_PASSWORD
-              value: "supersecret"
+      - name: infraauditai
+        image: infraauditai:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8000
+        securityContext:
+          allowPrivilegeEscalation: false
+        resources:
+          requests:
+            cpu: "100m"
+          limits:
+            cpu: "250m"

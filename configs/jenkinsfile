@@ -167,6 +167,22 @@ pipeline {
                 archiveArtifacts artifacts: 'logs\\*.log', allowEmptyArchive: true
             }
         }
+
+        stage('Deploy to Kubernetes with KIND') {
+            steps {
+                echo 'Creating KIND cluster and deploying to Kubernetes...'
+                bat '''
+                    kind create cluster --name infraaudit-cluster
+                    kubectl config get-contexts
+                    kubectl get nodes
+                    kubectl cluster-info
+                    kubectl apply -f configs\\kubernetes\\deployment.yaml
+                    kubectl apply -f configs\\kubernetes\\service.yaml
+                    kubectl get pods -o wide
+                    kubectl get svc
+                '''
+            }
+        }
     }
 
     post {

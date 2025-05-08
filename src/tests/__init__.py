@@ -1,1 +1,0 @@
-# The file /InfraAuditAI/InfraAuditAI/src/tests/__init__.py is intentionally left blank.
