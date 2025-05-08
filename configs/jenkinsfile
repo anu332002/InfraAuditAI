@@ -142,10 +142,7 @@ pipeline {
                         mkdir logs
                     )
                     call %VENV_DIR%\\Scripts\\activate
-                    python genai\\explain_findings.py > %AI_LOG%
-                    echo "=== AI Explanation of Findings ==="
-                    type %AI_LOG%
-                    echo "=== End of Explanation ==="
+                    python genai\\explain_findings.py
                 '''
             }
         }
@@ -154,7 +151,7 @@ pipeline {
             steps {
                 echo 'Archiving reports...'
                 archiveArtifacts artifacts: 'artifacts\\*.json', allowEmptyArchive: true
-                archiveArtifacts artifacts: 'logs\\ai_explanation.log', allowEmptyArchive: true
+                archiveArtifacts artifacts: 'logs\\*.log', allowEmptyArchive: true
             }
         }
     }

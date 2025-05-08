@@ -1,2 +1,4 @@
 # Python dependencies
 pytest
+fastapi
+uvicorn
