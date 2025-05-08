@@ -177,8 +177,9 @@ pipeline {
                     kind load docker-image infraauditai:latest --name infraaudit
                     kubectl apply -f configs\\kubernetes\\deployment.yaml
                     kubectl apply -f configs\\kubernetes\\service.yaml
-                    kubectl get pods -o wide
                     kubectl get svc
+                    kubectl get pods -o wide
+                    kubectl port-forward service/infraauditai-service 30080:8000
                 '''
             }
         }
