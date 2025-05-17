@@ -1,6 +1,6 @@
 # InfraAuditAI
 
-# Project Demo: [InfraAuditAI Demo](https://drive.google.com/file/d/17pE1CITLk2yjzuRhPJz3ED4VchD_gN5R/view)
+## Project Demo: [InfraAuditAI Demo](https://drive.google.com/file/d/17pE1CITLk2yjzuRhPJz3ED4VchD_gN5R/view)
 ## Business Problem
 
 Many organizations suffer from slow, error-prone releases and unplanned downtime due to manual build and deployment processes. Uncoordinated environments and hand-crafted deployments lead to failed releases and costly outages. For example, research estimates unplanned IT downtime costs about **$5,600 per minute**. Manually handling code builds, environment configuration, and deployments makes teams firefight issues instead of innovating. The business problem is to reduce deployment time and failures by adopting a reproducible, automated delivery process.
